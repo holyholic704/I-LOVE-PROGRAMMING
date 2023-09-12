@@ -136,4 +136,59 @@ make clean
 
 # 配置文件
 
+### 全局块
+
+```nginx
+# 指定可以运行nginx服务的用户和用户组
+# 在Windows上不生效
+user  [user] [group];
+# user	nobody;
+
+# 指定工作线程数
+# auto会创建与核心数相同的数量的工作线程
+worker_processes number | auto;
+# worker_processes	1;
+
+# 指定错误日志的路径和日志级别
+# debug级别的日志需要编译时使用--with-debug开启debug开关
+error_log  [path] [debug | info | notice | warn | error | crit | alert | emerg];
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+# 指定pid文件存放的路径
+pid        logs/nginx.pid;
+```
+
+### events 块
+
+```nginx
+# 设置允许每个工作线程同时开启的最大连接数，当每个工作进程接受的连接数超过这个值时将不再接收连接
+# 当所有的工作进程都接收满时，连接进入logback，logback满后连接被拒绝
+# 值不能超过超过系统支持打开的最大文件数，也不能超过单个进程支持打开的最大文件数
+worker_connections	1024;
+
+# 指定使用哪种网络IO模型
+# 可以不设置，nginx会根据操作系统选择合适的模型
+use	[select | poll | kqueue | epoll | rtsig | /dev/poll | eventport]
+
+# 客户端请求头部的缓冲区大小
+client_header_buffer_size  4k;
+
+# 防止惊群现象：当某一时刻只有一个网络连接到来时，多个睡眠进程会被同时叫醒，但只有一个进程可获得连接，其他进程获取控制权只能重新进入睡眠状态，造成性能浪费
+# 默认开启，即对多个进程接收连接进行序列化，防止多个进程对连接的争抢
+accept_mutex on;
+
+# 是否允许每个工作进程同时接受多个网络连接
+# 默认关闭，即一个工作进程只能同时接受一个新的连接
+multi_accept off;
+```
+
+
+
+
+
+
+
+
 
