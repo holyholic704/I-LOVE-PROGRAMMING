@@ -66,7 +66,7 @@ Nginx 是一个 轻量级、高性能的反向代理 Web 服务器、反向代�
     
     - 提供HTTP访问认证
 
-![](.\md.assets\42b6dc73733f208cff8d68bfe19088db.jpg)
+![](md.assets/42b6dc73733f208cff8d68bfe19088db.jpg)
 
 #### 正向代理与反向代理的区别
 
