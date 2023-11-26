@@ -1,0 +1,816 @@
+## Redis 概述
+
+Redis 是一个开源的，基于键值对（key-value）的 **非关系型数据库**（NoSQL）数据库，对数据的读写操作都是在内存中完成，因此 **读写速度非常快**，常用于 **缓存，消息队列、分布式锁等场景**
+
+## 特性
+
+### 1. 速度快
+
+Redis 执行命令的速度非常快，官方给出的数字是读写性能可以达到 **10万/秒**
+
+1. **所有数据都是存放在内存中**
+
+2. **由 C 语言实现**，一般来说 C 语言实现的程序距离操作系统更近，执行速度相对会更快
+
+3. 使用了 **单线程架构**，预防了多线程可能产生的竞争问题
+   
+   1. 单线程指的是网络请求模块使用了一个线程，即一个线程处理所有网络请求，**其他模块仍用了多个线程**
+   
+   2. 线程安全：Redis 实际上是采用了线程封闭的观念，把任务封闭在一个线程，自然避免了线程安全问题，所以 **Redis 的所有操作都是原子性的**，同时还支持对几个操作合并后的原子性执行
+
+4. **非阻塞 I/O**，Redis 使用 epoll 作为 **I/O 多路复用** 技术的实现，再加上 Redis 自身的事件处理模型将 epoll 中的连接、读写、关闭都转换为事件，不在网络 I/O 上浪费过多的时间
+
+5. 作者对于 Redis 源代码可以说是精打细磨，曾经有人评价 Redis 是少有的集性能和优雅于一身的开源代码
+
+### 2. 持久化
+
+提供了 RDB 和 AOF，可以将数据的更新异步的保存到磁盘中
+
+### 3. 多种数据结构
+
+1. 主要提供 5 种数据结构：**字符串、哈希、列表、集合、有序集合**
+
+2. 还提供位图（BitMap）、HyperLogLog、地理信息定位（GEO）、流（Stream）等
+
+3. 方便开发者的使用
+
+### 4. 支持多种编程语言
+
+Redis 提供了简单的 TCP 通信协议，很多编程语言可以很方便地接入到 Redis，如 Java、PHP、Python、Lua 等
+
+### 5. 功能丰富
+
+1. 提供了键过期功能，可以用来实现缓存
+
+2. 提供了发布订阅功能，可以用来实现消息系统
+
+3. 支持 Lua 脚本功能，可以利用 Lua 创造出新的 Redis 命令
+
+4. 提供了简单的事务功能，能在一定程度上保证事务特性
+
+5. 提供了流水线（Pipeline）功能，这样客户端能将一批命令一次性传到 Redis，减少了网络的开销
+
+### 6. 简单稳定
+
+1. 源代码十分简洁
+
+2. 使用了单线程模型
+
+3. 不需要依赖外部库
+
+4. 虽然简单，但十分稳定
+
+### 7. 主从复制
+
+1. Redis 提供了复制功能，实现了多个相同数据的 Redis 副本，复制功能是分布式 Redis 的基础
+
+2. 主服务器执行修改，从服务器负责查询
+
+### 8. 高可用与分布式
+
+1. 提供了高可用实现 Redis Sentinel，它能够保证 Redis 节点的故障发现和故障自动转移
+
+2. 提供了分布式实现 Redis Cluster，它是 Redis 真正的分布式实现，提供了高可用、读写和容量的扩展性
+
+## 缺点
+
+1. **数据库容量受到物理内存的限制**，不能用作海量数据的高性能读写
+   
+   - 一般只使用缓存存储一些 **常用和主要的数据**
+
+2. **不具备自动容错和恢复功能**，主机从机的宕机都会导致前端部分读写请求失败，需要等待机器重启或者手动切换前端的 IP 才能恢复
+
+3. 主机宕机，宕机前有部分数据未能及时同步到从机，切换 IP 后还会引入数据不一致的问题，降低了 **系统的可用性**
+
+4. **较难支持在线扩容**，在集群容量达到上限时在线扩容会变得很复杂。所以在上线时必须确保有足够的空间，这对资源造成了很大的浪费
+
+## 为什么要使用缓存
+
+- 在日常的 Web 应用对数据库的访问中，**读操作的次数远超写操作**
+
+- **高性能**：当用户第一次访问数据库中的某些数据，是从硬盘上读取的，所以过程会比较慢。将该用户访问的数据存在缓存中，再访问这些数据的时候就可以直接从缓存中获取了。**操作缓存就是直接操作内存，所以速度相当快**
+
+- **高并发**：缓存能够承受的请求是远远大于直接访问数据库的，**极大减小数据库的压力**，可以把数据库中的部分数据转移到缓存中去，这样用户的一部分请求会直接到缓存这里而不用经过数据库
+
+- 不建议使用缓存的场景
+  
+  - 业务数据不常用， 命中率很低
+  - 写操作多，频繁需要写入数据库
+  - 如果要存储几百兆字节的文件，会给缓存带来很大的压力
+
+## 为什么要使用 Redis 而不用 Map 做缓存
+
+1. **Map 是本地缓存**，最主要的特点是轻量以及快速，如果有多台实例的话，**每个实例都需要各自保存一份缓存，缓存不具有一致性**。生命周期随着 JVM 的销毁而结束，而且 JVM 内存太大容易挂掉的，一般用做于容器来存储临时数据
+   
+   - Map 所存储的数据结构，缓存过期机制等需要程序员自己手写的
+
+2. **Redis 是分布式缓存**，如果有多台实例的话，**每个实例都共享一份缓存，缓存具有一致性**。缺点是需要保持 Redis 服务的高可用，整个程序架构上较为复杂
+   
+   - 原生提供丰富的数据结构、缓存过期机制等简单好用的功能
+
+## 通用命令
+
+- Redis 命令 **大小写不敏感**
+
+```bash
+# 通过正则表达式查找key
+# 常用keys *查找所有key
+keys [pattern]
+
+# 查看key总数
+dbsize
+
+# 检查key是否存在
+exists <key>
+
+# 删除指定key及其对应的值
+del <key>
+
+# 修改key的名称
+rename <key> <newkey>
+
+# 设置过期时间
+expire <key> <seconds>
+
+# 查看key的剩余过期时间
+# 返回-1，该key未设置过期时间
+# 返回-2，该key不存在
+ttl <key>
+
+# 移除key的过期时间
+persist <key>
+
+# 查看key的数据类型
+type <key>
+
+# 查看key的内部编码
+object encoding <key>
+
+# 清除数据库
+flushall
+
+# 随机返回一个key
+randomkey
+```
+
+## 数据结构
+
+### 1. 字符串（String）
+
+Redis 中 **所有的 key 都是字符串**。字符串的值不仅可以是字符串，也可以是数字。**最大不能超过 512M**
+
+#### 1.1 内部实现
+
+底层的数据结构实现主要是 int 和 SDS，内部编码有 3 种 ：**int、raw、embstr**
+
+![](.\md.assets\String.png)
+
+- int：保存整数值，且范围在 long 类型之内，即 `-2^63 ~ 2^63 - 1`，超过则按字符串处理
+  
+  - 浮点数使用字符串保存
+
+- embstr：保存字符串，且字符串长度小于等于 32 字节
+
+- raw：保存字符串，且字符串长度大于 32 字节
+
+#### 1.2 使用场景
+
+##### 缓存
+
+字符串最经典的使用场景
+
+##### 计数器
+
+因为 Redis 命令是原子性的，且字符串提供了计数方面的命令，所以字符串数据类型非常适合计数场景。例如统计访问次数、粉丝数、库存数量
+
+##### 分布式锁
+
+因为 Redis 执行命令的过程是原子的，非常适合分布式锁的加锁操作
+
+```bash
+set <key> <value> nx ex 60
+```
+
+##### 限流
+
+为了限制接口的频繁调用，可以添加一个有过期时间的 key，在有效时间内忽略该用户对接口的请求
+
+#### 1.3 常用命令
+
+- 基本操作
+
+```bash
+# 为key赋值，如果key已经存储其他值，就覆写旧值，无视类型
+set <key> <value>
+
+# 获取指定key的值
+get <key>
+
+# 获取key所储存的字符串的长度，注意中文占两个字节
+strlen <key>
+
+# 为key赋值，并返回key的旧值（不常用）
+getset <key> <value>
+
+# 为key追加值，如果key不存在，就将给定的key赋值为value（不常用）
+append <key> <value>
+
+# 只在key不存在时，为key赋值
+set <key> <value> nx
+# 同
+setnx hello world
+
+# 只在key已经存在时，为key赋值
+set <key> <value> xx
+
+# 为key赋值，并设定过期时间（默认单位：秒）
+set <key> <value> ex/px <seconds>/<milliseconds>
+# 同
+setex/psetex <key> <seconds>/<milliseconds> <value>
+```
+
+- 批量操作（不常用）
+
+```bash
+# 批量为key赋值，如果key已经存储其他值，就覆写旧值，无视类型
+mset <key> <value>...
+# 例
+> mset k1 1 k2 two k3 三
+OK
+
+# 批量获取多个key的值
+mget <key>...
+# 例
+> mget k1 k2 k3
+1) "1"
+2) "two"
+3) "\xe4\xb8\x89"
+```
+
+- 计数器
+  
+  - **内部编码为 int 的时候可以使用**，即必须为整数，且范围在 `-2^63 ~ 2^63 - 1` 之内
+
+```bash
+# 将key中储存的数字增1，如果key不存在，那么key的值会被初始化为0，再执行操作
+incr <key>
+# 例
+> incr number
+(integer) 1
+
+# 将key中储存的数字加上指定的增量值，可以为负值，同上
+incrby <key> <increment>
+# 例
+> incrby number -10
+(integer) -9
+
+# 将key中储存的数字减1，同上
+decr <key>
+# 例
+> decr number
+(integer) -10
+
+# 将key中储存的数字减去指定的减量值，同上
+decrby <key> <decrement>
+# 例
+> decr number -10
+(integer) 0
+
+# 将key中储存的数字加上指定的浮点数增量值，同上（不常用）
+# 没有decrbyfloat命令
+# 注意，使用该命令后内部编码会变为字符串
+incrbyfloat <key> <increment>
+# 例
+> incrbyfloat number 0.1
+"0.1"
+```
+
+### 2. 哈希（Hash）
+
+哈希是一个 field 和 value 的映射表，field 不能相同，value 可以相同，**特别适合存储对象**，后续操作时，并且可以直接修改这个对象中的某个字段的值
+
+#### 2.1 内部实现
+
+在 Redis 7.0 之前使用 **哈希表（hashtable）和压缩列表（ziplist）** 作为底层实现，之后由于压缩列表数据结构已经废弃了，现在交由 **哈希表（hashtable）和紧凑列表（listpack）** 数据结构来实现
+
+#### 2.2 使用场景
+
+哈希类型的结构与对象的结构相似，且哈希结构相对于字符串序列化缓存信息更加直观，在更新操作上更加便捷。如果对象中的某些字段的值变化特别频繁，则哈希结构相比于字符串更有优势
+
+#### 2.3 常用命令
+
+- 基本操作
+
+```bash
+# 为哈希表中的字段赋值
+hset <key> <field> <value>
+
+# 只在field已经存在时，为哈希表中的字段赋值
+hsetnx <key> <field> <value>
+
+# 返回哈希表中字段的值
+hget <key> <field>
+
+# 删除哈希表中的字段
+hdel <key> <field>
+
+# 查看哈希表的指定字段是否存在
+hexists <key> <field>
+
+# 返回哈希表中字段的数量
+hlen <key>
+
+# 返回哈希表中的所有的字段
+hkeys <key>
+
+# 返回哈希表所有字段的值
+hvals <key>
+
+# 返回哈希表中所有的字段和值
+hgetall <key>
+
+# 为哈希表中的字段值加上指定增量值，同incrby
+hincrby <key> <field> <increment>
+
+# 为哈希表中的字段值加上指定浮点数增量值，同incrbyfloat
+hincrbyfloat <key> <field> <increment>
+
+# 同时将多个field-value对设置到哈希表中
+hmset <key> <field> <value>
+
+# 批量获取哈希表中字段的值
+hmget <key> <field>... 
+```
+
+### 3. 列表（List）
+
+列表是简单的字符串列表，列表中的每个字符串称为元素（element），可以从头部或尾部添加元素，元素是 **有序的、可重复的**，列表的最大长度为 `2^32 - 1`
+
+#### 3.1 内部实现
+
+早期版本使用 **双端列表（linkedlist）和压缩列表（ziplist）** 作为列表的底层实现，到 Redis 3.2 引入了由 linkedlist + ziplist 组成的 **快速列表（quicklist）**，再到 7.0 版本的时候使用 **紧凑列表（listpack）** 取代了 ziplist
+
+#### 3.2 使用场景
+
+列表不但有序，同时支持按照索引范围获取元素，关注列表，粉丝列表，消息列表等功能都可以用列表结构来实现。另外可以通过 lrange 命令，可以实现简单的高性能分页
+
+- lpush + lpop = Stack（栈）
+- lpush + rpop = Queue（队列）
+- lpush + ltrim = Capped Collection（有限集合）
+- lpush + brpop = Message Queue（消息队列）
+
+#### 3.3 常用命令
+
+- 基本操作
+
+```bash
+# 将value插入到列表的表头（最左边）
+# 最后的值在最前面，即最前面的值最先插入
+lpush <key> <value>...
+
+# 将value插入到列表的表尾（最右边）
+rpush <key> <value>...
+
+# 只在key已经存在时，将value插入到列表的表头（最左边）
+lpushx <key> <value>
+
+# 只在key已经存在时，将value插入到列表的表尾（最右边）
+rpushx <key> <value>
+
+# 移除并返回列表的表头（最左边）
+lpop <key>
+
+# 移除并返回列表的表尾（最右边）
+rpop <key>
+
+# 返回列表的长度
+llen <key>
+
+# 返回列表中指定区间内的元素
+# 截取范围由start和end两个偏移量决定，包括start和end在内
+lrange <key> <start> <end>
+
+# 在列表的指定元素前或者后插入元素
+linsert <key> before/after <value> <addValue>
+# 例
+> linsert hello before one 1.5
+> linsert hello after one 0
+> lrange hello 0 10
+1) "three"
+2) "two"
+3) "1.5"
+4) "one"
+5) "0"
+
+# 根据count的值，移除列表中与value相等的元素
+# count>0：从左到右，移除count个与value相等的元素
+# count<0：从右到左，移除count个与value相等的元素
+# count=0：移除表中所有与value相等的值
+lrem <key> <count> <value>
+# 例
+> lpush hello 1 1 2 1 1
+> lrem hello -2 1
+> lrange hello 0 10
+1) "1"
+2) "1"
+3) "2"
+
+# 对一个列表进行修剪，只保留指定区间内的元素，不在指定区间之内的元素都将被删除
+ltrim <key> <start> <end>
+# 例
+> lpush hello 1 1 2 1 1
+> ltrim hello 2 2
+> lrange hello 0 10
+1) "2"
+
+# 通过索引设置元素的值
+# 可以使用负数下标，-1表示最后一个元素，-2表示倒数第二个，以此类推
+$ lset <key> <index> <value>
+# 例
+> lpush hello 1 1 2 1 1
+> lset hello 2 250
+> lset hello -2 999
+1) "1"
+2) "1"
+3) "250"
+4) "999"
+5) "1"
+
+# 通过索引获取列表中的元素
+# 可以使用负数下标，-1表示最后一个元素，-2表示倒数第二个，以此类推
+$ lindex <key> <index>
+```
+
+- 阻塞操作
+
+```bash
+# 移除并返回列表的表头（最左边）
+# lpop的阻塞版本，如果列表没有元素，会阻塞列表直到等待超时或发现可弹出元素为止
+# timeout是阻塞超时时间，timeout为0表示一直阻塞
+$ blpop <key>... <timeout>
+# 例
+> blpop hello 10
+1) "hello"
+2) "three"
+> blpop hello 10
+1) "hello"
+2) "two"
+> blpop hello 10
+1) "hello"
+2) "one"
+> blpop hello 10
+(nil)
+(10.02s)
+# 阻塞了10秒后得到结果
+
+# 移除并返回列表的表尾（最右边），同上
+$ brpop <key> ... <timeout>
+```
+
+### 4. 集合（Set）
+
+集合与列表类似，不同之处在于集合是 **无序且唯一** 的，集合的最大长度也与列表相同为 `2^32 - 1`。Redis 除了支持集合内的增删改查，同时还 **支持集合间操作**，取交集、并集、差集
+
+#### 4.1 内部实现
+
+在 Redis 7.2 之前使用 **哈希表（hashtable）和整数集合（intset）** 作为底层实现。之后添加了 **紧凑列表（listpack）** 数据结构
+
+#### 4.2 使用场景
+
+##### 点赞
+
+通过集合的唯一性，将文章的点赞记录存入集合中，可以用来判断用户是否点过赞，保证一个用户只能点一个赞
+
+##### 共同关注
+
+通过集合类型的交集运算来实现
+
+- 集合的差集、并集和交集的计算复杂度较高，在数据量较大的情况下，如果直接执行这些计算，会导致 Redis 实例阻塞
+
+##### 抽奖
+
+通过集合类型的无序且唯一的特性，将参与者放入同一集合中，如果允许重复中奖可以使用 `srandmenber`，如果不允许重复中奖可以使用 `spop`
+
+#### 4.3 常用命令
+
+- 基本操作
+
+```bash
+# 将元素加入到集合中
+sadd <key> <member>
+
+# 移除集合中的元素
+srem <key> <member>
+
+# 返回集合中的所有元素
+smembers <key>
+
+# 返回集合中元素的数量
+scard <key>
+
+# 判断元素是否是集合的成员
+sismember <key> <member>
+
+# 随机移除集合中元素
+spop <key>
+
+# 随机返回集合中的元素
+# 如果count为正数，返回指定count个，且小于等于总元素个数的数组
+# 如果count为负数，返回count的绝对值个，可能会有重复的数组
+srandmember <key> <count>
+# 例
+> sadd hello one two three
+> srandmember hello 5
+1) "one"
+2) "two"
+3) "three"
+> srandmember hello -5
+1) "one"
+2) "three"
+3) "two"
+4) "three"
+5) "one"
+```
+
+- 集合间操作
+
+```bash
+# 返回给定集合之间的差集/并集/交集
+sdiff/sunion/sinter <key>...
+# 例
+> sadd aa one two three
+> sadd bb three four five
+> sdiff aa bb
+1) "one"
+2) "two"
+> sdiff bb aa
+1) "four"
+2) "five"
+> sunion aa bb
+1) "one"
+2) "two"
+3) "three"
+4) "four"
+5) "five"
+> sinter aa bb
+1) "three"
+
+# 将给定集合之间的差集/并集/交集存储在指定的集合destkey中
+sdiffstore/sunionstore/sinterstore <destkey> <key>...
+```
+
+### 5. 有序集合（Zset）
+
+和集合相比，有序集合增加了一个 **权重分值 score**，使得集合中的元素能够按 score 进行有序排列。score 可重复，element 不可重复
+
+#### 5.1 内部实现
+
+在 Redis 7.0 之前使用 **压缩列表（ziplist）和跳表（skiplist）** 作为底层实现。之后由于 ziplist 已经被废弃了，交由 **紧凑列表（listpack）和跳表（skiplist）** 数据结构来实现
+
+#### 5.2 使用场景
+
+- 排行榜：将需排行的数据以 score 的方式加入到有序集合中，可以通过 `zincrby` 后期调整分值，通过 `zrange/zrevrange`、`zrangebyscore/zrevrangebyscore`输出结果，还可根据参数进行分页
+
+#### 5.3 常用命令
+
+```bash
+# 将成员元素及其分数值加入到有序集合当中
+zadd <key> <score> <member>...
+
+# 返回有序集合中元素的数量
+zcard <key>
+
+# 返回有序集合中成员的分数值
+zscore <key> <member>
+
+# 移除有序集合中的元素
+zrem <key> <member>...
+
+# 为有序集合中的成员权重参数score加上指定增量值
+zincrby <key> <increment> <member>
+
+# 返回有序集合中指定分数区间的成员数量，范围包括min和max
+zcount <key> <min> <max>
+
+# 返回有序集合中指定成员的排名，按分数值递增/递减顺序排列，排名从0开始
+# withscore可选，可打印出元素的权重分值
+zrank/zrevrank <key> <member> [withscore]
+# 例
+> zadd hello 1 one 2 two 3 three
+> zrank hello one
+(integer) 0
+> zrevrank hello one
+(integer) 2
+
+# 返回有序集合中指定区间的成员，按分数值递增/递减顺序排列，分数相同按字典顺序排列
+# withscores可选，可打印出元素的权重分值
+zrange/zrevrange <key> <start> <end> [withscores]
+
+# 返回有序集合中指定分数区间的成员，按分数值递增/递减顺序排列
+# limit为指定返回结果的数量及区间，limit offset count
+zrangebyscore/zrevrangebyscore <key> <min> <max> [withscores] [limit offset count]
+# 例
+> zadd hello 100 one 200 two 300 three 400 four
+> zrangebyscore hello 150 999 limit 1 5
+1) "three"
+2) "four"
+
+# 移除有序集合中指定区间内的所有成员
+zremrangebyrank <key> <start> <end>
+
+# 移除有序集合中指定分数区间内的所有成员
+zremrangebyscore <key> <min> <max>
+```
+
+## 后续增加的数据结构
+
+### 1. 位图（Bitmap）
+
+2.2 版本新增。位图是一串连续的二进制数组，可以通过偏移量（offset）定位元素。位图通过最小的单位 bit 来进行 0 或 1 的设置，表示某个元素的值或者状态，使用它进行储存将 **非常节省空间**，特别适合一些数据量大且使用 **二值统计** 的场景
+
+#### 1.1 内部实现
+
+位图由 String 类型作为底层数据结构实现的。String 类型是会保存为二进制的字节数组，所以 Redis 就把字节数组的每个 bit 位利用起来，用来表示一个元素的二值状态，也可以将位图看作是一个 bit 数组
+
+#### 1.2 使用场景
+
+##### 签到统计
+
+可以通过 `setbit`，将下标当做一年或一个月的某天，将签到的日子设置为 1，之后就可以使用 `getbit` 来判断某天是否签到；使用 `bitcount` 统计签到次数，还可以指定范围；还可以使用 `bitpos` 查找首次签到日期，当然具体的日期还得处理一下
+
+##### 判断用户登录状态
+
+将每个用户对应到某个唯一的下标中，就可通过 `setbit/getbit` 进行判断某个用户的登录状态
+
+##### 连续签到用户总数
+
+将日期作为 key，将每个用户对应到某个唯一的下标中，再通过 `bitop` 的与操作进行输出
+
+#### 1.3 常用命令
+
+```bash
+# 设置值，value只能是0或1
+setbit <key> <offset> <value>
+
+# 获取值
+getbit <key> <offset>
+
+# 获取值为1的个数
+# 可以指定范围和单位
+bitcount <key> [<start> <end> [byte/bit]]
+
+# 取与/或/异或/非结果到目标key
+bitop and/or/xor/not <destKey> <key>...
+
+# 返回指定key中第一次出现指定value(0/1)的位置
+bitpos <key> <value> [<start> <end> [byte/bit]]
+```
+
+### 2. HyperLogLog
+
+2.8 版本新增。HyperLogLog 是一种基数估计算法，可以在只使用很少内存空间的情况下， **近似的** 估计一个集合中 **不重复** 元素的数量，标准误差率是 0.81%
+
+- 优点：效率高，误差率低，内存占用小
+
+- 缺点：结果不够精确，只能统计不重复的元素
+
+- 可以通过增加存储空间的大小来降低误差率
+
+- 与布隆过滤器（Bloom Filter）的区别
+  
+  - 都是基数估计算法
+  
+  - HyperLogLog 适用于 **估计集合中不重复元素的数量**
+  
+  - 布隆过滤器适用于 **判断某个元素是否属于某个集合**
+
+#### 2.1 内部实现
+
+与 Bitmap 类似，区别是多了对元素进行哈希计算后，转换到某个下标中
+
+#### 2.2 使用场景
+
+- UV 计数（Unique View）：将用户的唯一标识放入 HyperLogLog 中，再通过 `pfcount` 得到统计结果
+
+#### 2.3 常用命令
+
+```bash
+# 添加元素到HyperLogLog中
+pfadd <key> <value>...
+
+# 返回基数估算值
+pfcount <key>
+
+# 合并多个key到目标key
+pfmerge <destKey> <key>...
+```
+
+### 3. 地理信息定位（GEO）
+
+3.2 版本新增。主要用于存储地理位置信息，并对存储的信息进行操作
+
+#### 3.1 内部实现
+
+底层使用了 Zset 作为实现，使用了 GeoHash 完成经纬度到权重分数的转换。
+
+#### 3.2 使用场景
+
+- 附近的人：将用户的经纬度信息添加到集合中，通过 `georadius` 查找出附近的人
+
+#### 3.3 常用命令
+
+```bash
+# 存储地理空间位置
+geoadd <key> <longtitude> <latitude> <member>
+
+# 获得key里指定member的地理空间位置
+geopos <key> <member>...
+
+# 返回两个位置间的距离
+geodist <key> <member1> <member2> [m/km/ft/mi]
+
+# 以给定的位置为中心，查找出半径内的元素
+georadius <key> <longtitude> <latitude> <radius> m/km/ft/mi [withcoord/withdist/withhash] [count <count>] [asc/desc]
+```
+
+### 4. 流（Stream）
+
+5.0 版本新增。专门为消息队列设计的数据类型。Redis 实现的消息队列，收发消息不会丢失，但如果 Redis 宕机的话消息可能会丢失，而且消息积压多的话，内存资源会紧张，建议使用专门的消息队列中间件
+
+## 底层数据结构
+
+### 1. 简单动态字符串（SDS，Simple Dynamic String）
+
+Redis 虽然是由 C 语言实现的，但并没有直接使用 C 语言的字符串表示，而是自己封装了 SDS 数据结构来表示字符串
+
+#### C 语言字符串的不足之处
+
+- 字符串的结尾用 `\0` 表示，如果字符串里面就包含有 `\0`，字符串就会被截断，因此不能保存二进制数据
+
+![](.\md.assets\cstring.png)
+
+- 获取字符串长度的时间复杂度为 O(n)
+  - 获取字符串长度的 `strlen` 函数，需要遍历字符数组，直到遇到 `\0` 停止，然后才能返回字符串的长度
+
+![](.\md.assets\clength.png)
+
+- 字符串操作函数不高效且不安全
+  - C 语言的字符串不会记录自身的缓冲区大小，可能会有缓冲区溢出的风险，有可能会造成程序运行终止
+
+#### SDS 结构设计
+
+![](.\md.assets\sds.png)
+
+- len：记录了字符串长度
+- alloc：分配给字符数组的空间长度
+- flags：SDS 的类型
+- buf[]：用来保存实际的数据
+
+#### SDS 的优点
+
+##### 二进制安全
+
+二进制安全是指通过某种机制，保证读写字符串的时候不损害其内容。简而言之就是不会像 C 语言的字符串那样，字符串中有 `\0` 就截断了
+
+##### 获取字符串长度的时间复杂度为 O(1)
+
+直接返回 len 的值
+
+##### 不会发生缓冲区溢出
+
+在修改字符串的时候，可以通过 `alloc - len` 计算出剩余的空间大小，如果空间不能满足修改的需求，则会先将 SDS 的空间扩展到合适的大小，再执行修改的操作
+
+- 只当空间不足的时候才会扩容，可有效的减少内存分配次数
+
+##### 兼容性
+
+SDS 的数据实际都存放在 buf[] 中，且向上暴露的指针也是直接指向 buf[] 的，而且 SDS 为了兼容性，还是会在字符串结尾加上 `\0` 字符。这样上层就可以像读取 C 语言字符串一样读取 SDS 中的内容了，兼容了 C 语言处理字符串的各种函数
+
+##### 节省内存空间
+
+SDS 为了能灵活保存不同大小的字符串，从而能有效节省内存空间，设计了 5 种类型，分别是 sdshdr5、sdshdr8、sdshdr16、sdshdr32 和 sdshdr64
+
+SDS 还使用了专门的编译优化来节省内存空间，会告诉编译器取消结构体在编译过程中的优化对齐，按照实际占用字节数进行对齐
+
+### 2. 双端列表（linkedlist）
+
+在 3.2 版本之后 Redis 已经没有再直接用过双端列表作为底层数据结构了，而是使用 linkedlist + ziplist 的组合 quicklist 作为列表的内部实现，再到 7.0 版本的时候使用 listpack 彻底取代了 ziplist，随之消失的还有 linkedlist 和 quicklist
+
+![](.\md.assets\linkedlist.png)
+
+#### 优点
+
+- 获取头尾节点的时间复杂度为 O(1)
+- 获取某个节点的前驱节点或后继节点的时间复杂度为 O(1)
+- 因为提供了链表节点数量 len，所以获取链表中的节点数量的时间复杂度只需 O(1)
+- 链表节点可以保存各种不同类型的值
+
+#### 缺点
+
+- 链表每个节点之间的内存都是不连续的，意味着 **无法很好利用 CPU 缓存**
+
+- 每个节点除了保存节点的值，还需要保存节点的结构头，**内存开销较大**
+
+## 引用
+
+- [2 万字 + 20张图｜ 细说 Redis 九种数据类型和应用场景](https://mp.weixin.qq.com/s/r9_0xpRsp2ubgyvpiyMfuw)
