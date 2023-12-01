@@ -797,6 +797,16 @@ georadius <key> <longtitude> <latitude> <radius> m/km/ft/mi [withcoord/withdist/
 
 5.0 版本新增。专门为消息队列设计的数据类型。Redis 实现的消息队列，收发消息不会丢失，但如果 Redis 宕机的话消息可能会丢失，而且消息积压多的话，内存资源会紧张，建议使用专门的消息队列中间件
 
+## 内存淘汰
+
+## 大 key
+
+## 事务
+
+## pipeline
+
+## 慢查询
+
 ## 引用
 
 - [2 万字 + 20张图｜ 细说 Redis 九种数据类型和应用场景](https://mp.weixin.qq.com/s/r9_0xpRsp2ubgyvpiyMfuw)
