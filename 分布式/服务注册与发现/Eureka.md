@@ -1,4 +1,4 @@
-
+## Eureka
 
 注意版本问题
 
@@ -38,43 +38,39 @@ eureka:
 @SpringBootApplication
 @EnableEurekaServer
 public class NetflixApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(NetflixApplication.class, args);
     }
 }
 ```
 
-
 ### 服务端
 
 ```xml
-    <dependencies>
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+    </dependency>
 
+    <!-- 不加会报错 -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+</dependencies>
+
+<dependencyManagement>
+    <dependencies>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
-        </dependency>
-
-<!-- 不加会报错 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-cloud-dependencies</artifactId>
+            <version>${spring-cloud.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
         </dependency>
     </dependencies>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring-cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
+</dependencyManagement>
 ```
 
 ```yaml
@@ -86,20 +82,19 @@ eureka:
       defaultZone: http://localhost:8788/eureka
 spring:
   application:
-  # 名称
-    name: woc1
+    name: eureka-test
 ```
 
 ```java
 @EnableEurekaClient
 @SpringBootApplication
 public class EurekaConsumerApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(EurekaConsumerApplication.class, args);
     }
-
 }
 ```
+
+## 引用
 
 https://www.cnblogs.com/javaxubo/p/17498274.html
