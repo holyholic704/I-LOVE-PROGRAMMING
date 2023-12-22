@@ -1,10 +1,11 @@
+- JVM
+- 并发
+- 集合
 - Spring Cloud
   - 组件使用及原理
 - 消息队列
 - Spring Boot/Spring
   - 原理
-- 并发
-- 集合
 - 负载均衡
   - 了解负载均衡算法
 - Maven
@@ -21,7 +22,6 @@
   - 常见的
 - Java IO
   - 大致
-- JVM
 - Netty
   - 大致
 - Nginx
