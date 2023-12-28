@@ -657,19 +657,32 @@ public class Test {
 }
 ```
 
-调用 wait 的前提是当前线程得拥有该对象的锁，否则会抛出 IllegalMonitorStateException 异常，因为 wait 方法的作用之一就是释放当前对象的锁，如果锁都没有获取到，又怎么去释放锁呢
+调用 wait 的前提是当前线程得拥有该对象的锁，否则会抛出 IllegalMonitorStateException 异常，你得先有锁才能去释放
 
-##### wait 方法必须包含在 synchronized 语句中
+##### 为什么 wait 方法必须包含在 synchronized 语句中
 
-如果 wait 方法没有包含在 synchronized 语句中，就会抛出 IllegalMonitorStateException 异常。首先 synchronized 的作用就是同步，
+如果 wait 方法没有包含在 synchronized 语句中，就会抛出 IllegalMonitorStateException 异常
 
-使用完 wait，就需要等待一个 notify 方法将其唤醒，虽然 wait 有超时的限制，但只能说是保底的机制。
+wait 方法作用是让当前线程等待，有等待肯定想要一个结果，如果一个等待注定没有结果，那不是等待，那是卡死了，也不符合实际的需求。所以调用完 wait 方法的线程，就期待着他能被 notify 或 notifyAll 唤醒，能够继续完成他未竟的事业。当然 wait 方法有个超时时间，但这是个保底机制，他主要期望的还是能被唤醒
+
+其次 synchronized 的作用就是同步，在并发环境中，有可能出现 wait 方法期待的唤醒方法先于 wait 方法执行完毕，造成空唤醒的情况
 
 ##### 与 sleep 方法的区别
 
-##### 为什么 wait 方法不定义在 Thread 类中
+两者都可以暂停当前线程的执行，都可以响应中断
+
+- wait 是 Object 类中的方法，sleep 是 Thread 类的静态方法
+- wait 需写在 synchronized 语句中，sleep 则不需要
+- wait 可以不指定时间参数，sleep 需指定时间参数
+- wait 被调用后会释放当前对象的锁，而 sleep 则不会释放
+- wait 常用作线程间通信，sleep 常用作暂停线程的执行
+- wait 可以被 notify、notifyAll 唤醒，而 sleep 只能等待其自动苏醒
 
 #### notify 与 notifyAll
+
+notify 会 **随机** 唤醒一个正在等待的持有相同锁的线程，notifyAll 则会唤醒所有正在等待持有相同锁的线程
+
+当一个线程调用了 wait 方法，就会进入到该对象（相同锁）的等待队列中。当 notify 方法被调用时，就会从这个队列中随机选择一个线程将其唤醒，而 notifyAll 方法被调用时，会唤醒队列中所有的线程
 
 ```java
 public final native void notify();
@@ -677,16 +690,159 @@ public final native void notify();
 public final native void notifyAll();
 ```
 
+```java
+public class Test {
 
+    private static final Object lock_1 = new Object();
 
+    private static final Object lock_2 = new Object();
 
+    public static void main(String[] args) throws InterruptedException {
+        Thread t1 = new Thread(() -> {
+            synchronized (lock_1) {
+                try {
+                    lock_1.wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            System.out.println("t1 done");
+        });
 
+        Thread t2 = new Thread(() -> {
+            synchronized (lock_1) {
+                try {
+                    lock_1.wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            System.out.println("t2 done");
+        });
 
+        Thread t3 = new Thread(() -> {
+            synchronized (lock_2) {
+                try {
+                    lock_2.wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            System.out.println("t3 done");
+        });
 
+        Thread thread = new Thread(() -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            synchronized (lock_1) {
+                lock_1.notifyAll();
+            }
+        });
 
+        t1.start();
+        Thread.sleep(50);
+        t2.start();
+        Thread.sleep(50);
+        t3.start();
+        Thread.sleep(50);
+        thread.start();
+    }
+}
+```
 
-线程间有哪些通信
+> t2 done
+> t1 done
 
+可以看出 notifyAll 唤醒了，所有持有相同锁的线程，并且唤醒的顺序是随机的
 
+##### 为什么 wait、notify、notifyAll 方法定义在 Object 类中
 
+Java 多线程的锁都是基于对象的，Java 中的每一个对象都可以作为一个锁。也就是说 Java 提供的锁是对象级的而不是线程级的，而线程是可以获取到这个对象的，因此线程需要等待某个对象锁时，只要调用该对象的 wait 方法就可以了。如果定义在 Thread 类中，那么线程需要等待的哪个锁就不明确了
 
+##### 虚假唤醒
+
+多线程环境下，有多个线程执行了 wait 方法，需要其他线程去唤醒它们，假如多个线程都被唤醒了，但是只有其中一部分是有用的唤醒操作，其余的唤醒都是无用功，对于不应该被唤醒的线程而言，便是虚假唤醒
+
+```java
+synchronized (obj) {
+    while (<condition does not hold>) {
+        obj.wait(timeout);
+        ...
+    }
+}
+```
+
+Java 推荐使用 while 来替代 if 作为条件判断，以避免虚假唤醒
+
+##### 隐式的 notifyAll 调用
+
+```java
+public class Test {
+
+    public static void main(String[] args) throws InterruptedException {
+        Thread thread = new MyThread();
+
+        thread.start();
+
+        synchronized (thread) {
+            thread.wait();
+            System.out.println("all done");
+        }
+    }
+}
+
+class MyThread extends Thread {
+    @Override
+    public void run() {
+        System.out.println("run");
+    }
+}
+```
+
+> run
+> all done
+
+对于以上代码，期望的结果应该是打印完 run 之后，主线程就暂停执行了，是打印不出 all done 的，但事与愿违，这两行都打印出来了
+
+其实可以从 join 方法的注释上找到答案。当一个线程终止时，会主动调用 notifyAll 方法唤醒所有等待该线程对象锁的所有线程。并且建议不要在线程对象上使用 wait、notify、notifyAll 方法
+
+```java
+public class Test {
+
+    static Object object = new Object();
+
+    public static void main(String[] args) throws InterruptedException {
+        Thread thread = new MyThread();
+
+        thread.start();
+
+        synchronized (object) {
+            object.wait();
+            System.out.println("all done");
+        }
+    }
+}
+
+class MyThread extends Thread {
+    @Override
+    public void run() {
+        System.out.println("run");
+    }
+}
+```
+
+> run
+
+## 参考
+
+- 《实战Java高并发程序设计（第3版）》
+- [Why must wait() always be in synchronized block](https://stackoverflow.com/questions/2779484/why-must-wait-always-be-in-synchronized-block)
+- [为什么wait()要在synchronized块中执行](https://blog.csdn.net/m0_62573351/article/details/133150670)
+- [Java中sleep()方法和wait()方法的异同点](https://blog.csdn.net/x541211190/article/details/109545132#:~:text=%E2%91%A0.%20wait()%20%E3%80%81%20notify(),%E6%96%B9%E6%B3%95%E5%8F%AF%E4%BB%A5%E6%8C%87%E5%AE%9A%E6%97%B6%E9%97%B4%E5%8F%82%E6%95%B0%E3%80%82)
+- [notify()、notifyAll()和wait()](https://www.cnblogs.com/andrew-chen/p/4916880.html)
+- [Java多线程中的wait/notify通信模式](https://www.cnblogs.com/jian0110/p/14064934.html)
+- [[多线程] Wait和Notify方法解析](https://www.cnblogs.com/aiqiqi/p/11668211.html#_label2)
+- [Java线程虚假唤醒是什么、如何避免？](https://blog.csdn.net/Saintmm/article/details/121092830)
