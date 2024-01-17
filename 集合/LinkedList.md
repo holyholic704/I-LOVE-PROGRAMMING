@@ -56,67 +56,67 @@ public LinkedList(Collection<? extends E> c) {
 ## 添加
 
 ```java
+// 添加元素到尾部
 public boolean add(E e) {
     linkLast(e);
     return true;
 }
 
+// 添加元素到指定位置
 public void add(int index, E element) {
     checkPositionIndex(index);
 
+    // 如果要添加的位置在尾部，直接在尾部进行添加
     if (index == size)
         linkLast(element);
     else
         linkBefore(element, node(index));
 }
 
+// 添加元素到头部
 public void addFirst(E e) {
     linkFirst(e);
 }
 
+// 添加元素到尾部
 public void addLast(E e) {
     linkLast(e);
 }
 
+// 添加元素到尾部
 public boolean offer(E e) {
     return add(e);
 }
 
-// Deque operations
-/**
- * Inserts the specified element at the front of this list.
- *
- * @param e the element to insert
- * @return {@code true} (as specified by {@link Deque#offerFirst})
- * @since 1.6
- */
+// 添加元素到头部
 public boolean offerFirst(E e) {
     addFirst(e);
     return true;
 }
 
-/**
- * Inserts the specified element at the end of this list.
- *
- * @param e the element to insert
- * @return {@code true} (as specified by {@link Deque#offerLast})
- * @since 1.6
- */
+// 添加元素到尾部
 public boolean offerLast(E e) {
     addLast(e);
     return true;
 }
 
+// 添加元素到头部
 public void push(E e) {
     addFirst(e);
 }
 ```
 
+### 添加头节点
+
 ```java
 private void linkFirst(E e) {
     final Node<E> f = first;
+    // 创建新节点，并将后继节点指向原头节点
     final Node<E> newNode = new Node<>(null, e, f);
+    // 将头节点指向新节点
     first = newNode;
+    // 如果原头节点为null，说明链表为空，则将尾节点也指向新节点
+    // 如果原头节点不为null，则将原头节点的前驱节点指向新节点
     if (f == null)
         last = newNode;
     else
@@ -124,11 +124,21 @@ private void linkFirst(E e) {
     size++;
     modCount++;
 }
+```
 
+![](./md.assets/linkedlist_add_first.png)
+
+### 添加尾节点
+
+```java
 void linkLast(E e) {
     final Node<E> l = last;
+    // 创建新节点，并将前驱节点指向原尾节点
     final Node<E> newNode = new Node<>(l, e, null);
+    // 将尾节点指向新节点
     last = newNode;
+    // 如果原尾节点为null，说明链表为空，则将头节点也指向新节点
+    // 如果原尾节点不为null，则将原尾节点的后继节点指向新节点
     if (l == null)
         first = newNode;
     else
@@ -136,12 +146,19 @@ void linkLast(E e) {
     size++;
     modCount++;
 }
+```
 
+### 添加前驱节点
+
+```java
 void linkBefore(E e, Node<E> succ) {
-    // assert succ != null;
     final Node<E> pred = succ.prev;
+    // 创建新节点，并将前驱节点指向原节点前驱节点，后继节点指向原节点
     final Node<E> newNode = new Node<>(pred, e, succ);
+    // 将原节点的前驱节点指向新节点
     succ.prev = newNode;
+    // 如果原节点的前驱节点为null，说明原节点是头节点，则将头节点也指向新节点
+    // 如果原节点的前驱节点不为null，则将原节点的前驱节点的后继节点指向新节点
     if (pred == null)
         first = newNode;
     else
@@ -150,6 +167,8 @@ void linkBefore(E e, Node<E> succ) {
     modCount++;
 }
 ```
+
+![](./md.assets/linkedlist_linkbefore.png)
 
 ## 添加集合
 
@@ -169,7 +188,7 @@ public boolean addAll(int index, Collection<? extends E> c) {
 
     Node<E> pred, succ;
     // 如果要插入的位置等于已有的元素数量，说明要插入到链表尾部，后继节点指向null，前驱节点指向last
-    // 如果要插入的位置不等于已有的元素数量，说明要插入到链表之间，后继节点指向该位置本来的节点，前驱节点指向原本节点的前驱节点
+    // 如果要插入的位置不等于已有的元素数量，说明要插入到链表中间，后继节点指向该位置本来的节点，前驱节点指向原节点的前驱节点
     if (index == size) {
         succ = null;
         pred = last;
@@ -188,10 +207,12 @@ public boolean addAll(int index, Collection<? extends E> c) {
             first = newNode;
         else
             pred.next = newNode;
-        // 将前驱节点指向新节点
+        // 将前驱节点指向新节点，用于下次插入
         pred = newNode;
     }
 
+    // 如果后继节点为null，则将尾节点指向最后一个插入的节点
+    // 如果后继节点不为null，则将最后插入的节点的后继节点指向原节点的后继节点，并原节点的后继节点的前驱节点指向最后插入的节点
     if (succ == null) {
         last = pred;
     } else {
@@ -213,52 +234,8 @@ public E get(int index) {
     return node(index).item;
 }
 
-public E getFirst() {
-    final Node<E> f = first;
-    if (f == null)
-        throw new NoSuchElementException();
-    return f.item;
-}
-
-public E getLast() {
-    final Node<E> l = last;
-    if (l == null)
-        throw new NoSuchElementException();
-    return l.item;
-}
-
-public E peek() {
-    final Node<E> f = first;
-    return (f == null) ? null : f.item;
-}
-
-public E element() {
-    return getFirst();
-}
-
-public E peekFirst() {
-    final Node<E> f = first;
-    return (f == null) ? null : f.item;
-    }
-
-/**
- * Retrieves, but does not remove, the last element of this list,
- * or returns {@code null} if this list is empty.
- *
- * @return the last element of this list, or {@code null}
- *         if this list is empty
- * @since 1.6
- */
-public E peekLast() {
-    final Node<E> l = last;
-    return (l == null) ? null : l.item;
-}
-```
-
-```java
 Node<E> node(int index) {
-    // assert isElementIndex(index);
-
+    // 如果指定的下标小于容量的一半，从头部开始遍历，否则从尾部开始遍历
     if (index < (size >> 1)) {
         Node<E> x = first;
         for (int i = 0; i < index; i++)
@@ -273,18 +250,103 @@ Node<E> node(int index) {
 }
 ```
 
+```java
+// 获取头节点
+public E getFirst() {
+    final Node<E> f = first;
+    if (f == null)
+        throw new NoSuchElementException();
+    return f.item;
+}
+
+// 获取尾节点
+public E getLast() {
+    final Node<E> l = last;
+    if (l == null)
+        throw new NoSuchElementException();
+    return l.item;
+}
+
+// 获取头节点
+public E peek() {
+    final Node<E> f = first;
+    return (f == null) ? null : f.item;
+}
+
+// 获取头节点
+public E element() {
+    return getFirst();
+}
+
+// 获取头节点
+public E peekFirst() {
+    final Node<E> f = first;
+    return (f == null) ? null : f.item;
+}
+
+// 获取尾节点
+public E peekLast() {
+    final Node<E> l = last;
+    return (l == null) ? null : l.item;
+}
+```
+
 ## 删除
 
 ```java
-public E remove() {
-    return removeFirst();
-}
-
+// 删除给定下标位置的节点
 public E remove(int index) {
     checkElementIndex(index);
     return unlink(node(index));
 }
 
+// 删除头节点
+public E remove() {
+    return removeFirst();
+}
+
+// 删除头节点
+public E removeFirst() {
+    final Node<E> f = first;
+    if (f == null)
+        throw new NoSuchElementException();
+    return unlinkFirst(f);
+}
+
+// 删除尾节点
+public E removeLast() {
+    final Node<E> l = last;
+    if (l == null)
+        throw new NoSuchElementException();
+    return unlinkLast(l);
+}
+
+// 删除头节点
+public E poll() {
+    final Node<E> f = first;
+    return (f == null) ? null : unlinkFirst(f);
+}
+
+// 删除头节点
+public E pollFirst() {
+    final Node<E> f = first;
+    return (f == null) ? null : unlinkFirst(f);
+}
+
+// 删除尾节点
+public E pollLast() {
+    final Node<E> l = last;
+    return (l == null) ? null : unlinkLast(l);
+}
+
+// 删除头节点
+public E pop() {
+    return removeFirst();
+}
+```
+
+```java
+// 删除给定的元素
 public boolean remove(Object o) {
     if (o == null) {
         for (Node<E> x = first; x != null; x = x.next) {
@@ -304,75 +366,12 @@ public boolean remove(Object o) {
     return false;
 }
 
-public E removeFirst() {
-    final Node<E> f = first;
-    if (f == null)
-        throw new NoSuchElementException();
-    return unlinkFirst(f);
-}
-
-/**
- * Removes and returns the last element from this list.
- *
- * @return the last element from this list
- * @throws NoSuchElementException if this list is empty
- */
-public E removeLast() {
-    final Node<E> l = last;
-    if (l == null)
-        throw new NoSuchElementException();
-    return unlinkLast(l);
-}
-
-public E poll() {
-    final Node<E> f = first;
-    return (f == null) ? null : unlinkFirst(f);
-}
-
-public E pollFirst() {
-    final Node<E> f = first;
-    return (f == null) ? null : unlinkFirst(f);
-}
-
-/**
- * Retrieves and removes the last element of this list,
- * or returns {@code null} if this list is empty.
- *
- * @return the last element of this list, or {@code null} if
- *     this list is empty
- * @since 1.6
- */
-public E pollLast() {
-    final Node<E> l = last;
-    return (l == null) ? null : unlinkLast(l);
-}
-
-public E pop() {
-    return removeFirst();
-}
-
-/**
- * Removes the first occurrence of the specified element in this
- * list (when traversing the list from head to tail).  If the list
- * does not contain the element, it is unchanged.
- *
- * @param o element to be removed from this list, if present
- * @return {@code true} if the list contained the specified element
- * @since 1.6
- */
+// 删除给定的元素，从头部开始查找
 public boolean removeFirstOccurrence(Object o) {
     return remove(o);
 }
 
-/**
- * Removes the last occurrence of the specified element in this
- * list (when traversing the list from head to tail).  If the list
- * does not contain the element, it is unchanged.
- *
- * @param o element to be removed from this list, if present
- * @return {@code true} if the list contained the specified element
- * @since 1.6
- */
+// 删除给定的元素，从尾部开始查找
 public boolean removeLastOccurrence(Object o) {
     if (o == null) {
         for (Node<E> x = last; x != null; x = x.prev) {
@@ -393,14 +392,19 @@ public boolean removeLastOccurrence(Object o) {
 }
 ```
 
+### 删除头节点
+
 ```java
 private E unlinkFirst(Node<E> f) {
-    // assert f == first && f != null;
     final E element = f.item;
     final Node<E> next = f.next;
     f.item = null;
+    // 将原头节点的后继节点指向null
     f.next = null; // help GC
+    // 将头节点指向原头节点的后继节点
     first = next;
+    // 如果原头节点的后继节点为null，说明链表中只有一个节点，则将尾节点也指向null
+    // 如果原头节点的后继节点不为null，则将原头节点的后继节点的前驱节点指向null
     if (next == null)
         last = null;
     else
@@ -409,17 +413,21 @@ private E unlinkFirst(Node<E> f) {
     modCount++;
     return element;
 }
+```
 
-/**
- * Unlinks non-null last node l.
- */
+### 删除尾节点
+
+```java
 private E unlinkLast(Node<E> l) {
-    // assert l == last && l != null;
     final E element = l.item;
     final Node<E> prev = l.prev;
     l.item = null;
+    // 将原尾节点的前驱节点指向null
     l.prev = null; // help GC
+    // 将尾节点指向原尾节点的前驱节点
     last = prev;
+    // 如果原尾节点的前驱节点为null，说明链表中只有一个节点，则将头节点也指向null
+    // 如果原尾节点的前驱节点不为null，则将原尾节点的前驱节点的后继节点指向null
     if (prev == null)
         first = null;
     else
@@ -428,16 +436,19 @@ private E unlinkLast(Node<E> l) {
     modCount++;
     return element;
 }
+```
 
-/**
- * Unlinks non-null node x.
- */
+### 删除指定节点
+
+```java
 E unlink(Node<E> x) {
     // assert x != null;
     final E element = x.item;
     final Node<E> next = x.next;
     final Node<E> prev = x.prev;
 
+    // 如果该节点的前驱节点为null，说明该节点为头节点，则将头节点指向该节点的后继节点
+    // 如果该节点的前驱节点不为null，将该节点的前驱节点的后继节点指向该节点的后继节点，并将该节点的前驱节点指向null
     if (prev == null) {
         first = next;
     } else {
@@ -445,6 +456,8 @@ E unlink(Node<E> x) {
         x.prev = null;
     }
 
+    // 如果该节点的后继节点为null，说明该节点为尾节点，则将尾节点指向该节点的前驱节点
+    // 如果该节点的后继节点不为null，将该节点的后继节点的前驱节点指向该节点的前驱节点，并将该节点的后继节点指向null
     if (next == null) {
         last = prev;
     } else {
@@ -458,6 +471,8 @@ E unlink(Node<E> x) {
     return element;
 }
 ```
+
+![](./md.assets/linkedlist_unlink.png)
 
 ## 修改
 
@@ -475,10 +490,8 @@ public E set(int index, E element) {
 
 ```java
 public void clear() {
-    // Clearing all of the links between nodes is "unnecessary", but:
-    // - helps a generational GC if the discarded nodes inhabit
-    //   more than one generation
-    // - is sure to free memory even if there is a reachable Iterator
+    // 从头节点开始遍历
+    // 将遍历到的所有节点的所有指向都置为null
     for (Node<E> x = first; x != null; ) {
         Node<E> next = x.next;
         x.item = null;
@@ -499,6 +512,7 @@ public boolean contains(Object o) {
     return indexOf(o) != -1;
 }
 
+// 正序查找，返回给定元素的第一次出现的下标，如果不存在返回-1
 public int indexOf(Object o) {
     int index = 0;
     if (o == null) {
@@ -517,17 +531,7 @@ public int indexOf(Object o) {
     return -1;
 }
 
-/**
- * Returns the index of the last occurrence of the specified element
- * in this list, or -1 if this list does not contain the element.
- * More formally, returns the highest index {@code i} such that
- * <tt>(o==null&nbsp;?&nbsp;get(i)==null&nbsp;:&nbsp;o.equals(get(i)))</tt>,
- * or -1 if there is no such index.
- *
- * @param o element to search for
- * @return the index of the last occurrence of the specified element in
- *         this list, or -1 if this list does not contain the element
- */
+// 倒序查找，返回给定元素的第一次出现的下标，如果不存在返回-1
 public int lastIndexOf(Object o) {
     int index = size;
     if (o == null) {
@@ -548,6 +552,8 @@ public int lastIndexOf(Object o) {
 ```
 
 ## 拷贝
+
+返回该集合的浅拷贝
 
 ```java
 public Object clone() {
