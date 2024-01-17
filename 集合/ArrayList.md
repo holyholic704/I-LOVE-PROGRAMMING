@@ -1,5 +1,66 @@
 # ArrayList
 
+![](./md.assets/arraylist.png)
+
+## RandomAccess
+
+RandomAccess 是一个标志接口，内部没有任何方法或者注解，被该接口标记的集合支持快速随机访问，可以以常数级的时间复杂度从集合中获取元素，并且使用普通 for 循环遍历的效率要高于使用迭代器遍历
+
+```java
+public interface RandomAccess {
+}
+```
+
+```java
+public class ArrayTest {
+
+    public static void main(String[] args) {
+        int length = 100000;
+
+        ArrayList<Integer> arrayList = new ArrayList<>(length);
+        LinkedList<Integer> linkedList = new LinkedList<>();
+
+        for (int i = 0; i < length; i++) {
+            arrayList.add(0);
+            linkedList.add(0);
+        }
+
+        long l1 = System.currentTimeMillis();
+        for (int i = 0; i < arrayList.size(); i++) {
+            arrayList.get(i);
+        }
+        long l2 = System.currentTimeMillis();
+        for (int i = 0; i < linkedList.size(); i++) {
+            linkedList.get(i);
+        }
+        long l3 = System.currentTimeMillis();
+
+        System.out.println("ArrayList普通for循环：" + (l2 - l1));
+        System.out.println("LinkedList普通for循环：" + (l3 - l2));
+
+        l1 = System.currentTimeMillis();
+        Iterator<Integer> arrayListLtr = arrayList.iterator();
+        while (arrayListLtr.hasNext()) {
+            arrayListLtr.next();
+        }
+        l2 = System.currentTimeMillis();
+        Iterator<Integer> linkedListLtr = linkedList.iterator();
+        while (linkedListLtr.hasNext()) {
+            linkedListLtr.next();
+        }
+        l3 = System.currentTimeMillis();
+
+        System.out.println("ArrayList迭代器：" + (l2 - l1));
+        System.out.println("LinkedList迭代器：" + (l3 - l2));
+    }
+}
+```
+
+> ArrayList普通for循环：0
+LinkedList普通for循环：2908
+ArrayList迭代器：2
+LinkedList迭代器：1
+
 ## 成员变量
 
 ```java
@@ -518,7 +579,7 @@ private void fastRemove(int index) {
 
 ## 修改
 
-将指定下标的元素替换为给定的元素
+将指定下标的元素替换为给定的元素，并返回旧元素
 
 ```java
 public E set(int index, E element) {
@@ -532,6 +593,8 @@ public E set(int index, E element) {
 ```
 
 ## 清空
+
+清空集合中的元素，但数组仍维持原来的大小
 
 ```java
 public void clear() {
@@ -642,103 +705,68 @@ public Object clone() {
 }
 ```
 
-## 其他
+## 移除或保留
 
 ```java
-// 返回集合中的元素数量
-public int size() {
-    return size;
-}
-```
-
-```java
-// 判断该集合是否为空
-public boolean isEmpty() {
-    return size == 0;
-}
-```
-
-```java
-// 集合转数组
-public Object[] toArray() {
-    return Arrays.copyOf(elementData, size);
+// 从当前的集合中移除给定的集合中的元素
+public boolean removeAll(Collection<?> c) {
+    Objects.requireNonNull(c);
+    return batchRemove(c, false);
 }
 
-@SuppressWarnings("unchecked")
-public <T> T[] toArray(T[] a) {
-    if (a.length < size)
-        // Make a new array of a's runtime type, but my contents:
-        return (T[]) Arrays.copyOf(elementData, size, a.getClass());
-    System.arraycopy(elementData, 0, a, 0, size);
-    if (a.length > size)
-        a[size] = null;
-    return a;
+// 从当前的集合中保留给定的集合中的元素
+public boolean retainAll(Collection<?> c) {
+    Objects.requireNonNull(c);
+    return batchRemove(c, true);
 }
-```
 
-```java
-    public boolean removeAll(Collection<?> c) {
-        Objects.requireNonNull(c);
-        return batchRemove(c, false);
-    }
-
-    /**
-     * Retains only the elements in this list that are contained in the
-     * specified collection.  In other words, removes from this list all
-     * of its elements that are not contained in the specified collection.
-     *
-     * @param c collection containing elements to be retained in this list
-     * @return {@code true} if this list changed as a result of the call
-     * @throws ClassCastException if the class of an element of this list
-     *         is incompatible with the specified collection
-     * (<a href="Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException if this list contains a null element and the
-     *         specified collection does not permit null elements
-     * (<a href="Collection.html#optional-restrictions">optional</a>),
-     *         or if the specified collection is null
-     * @see Collection#contains(Object)
-     */
-    public boolean retainAll(Collection<?> c) {
-        Objects.requireNonNull(c);
-        return batchRemove(c, true);
-    }
-
-    private boolean batchRemove(Collection<?> c, boolean complement) {
-        final Object[] elementData = this.elementData;
-        int r = 0, w = 0;
-        boolean modified = false;
-        try {
-            for (; r < size; r++)
-                if (c.contains(elementData[r]) == complement)
-                    elementData[w++] = elementData[r];
-        } finally {
-            // Preserve behavioral compatibility with AbstractCollection,
-            // even if c.contains() throws.
-            if (r != size) {
-                System.arraycopy(elementData, r,
-                                 elementData, w,
-                                 size - r);
-                w += size - r;
-            }
-            if (w != size) {
-                // clear to let GC do its work
-                for (int i = w; i < size; i++)
-                    elementData[i] = null;
-                modCount += size - w;
-                size = w;
-                modified = true;
-            }
+private boolean batchRemove(Collection<?> c, boolean complement) {
+    final Object[] elementData = this.elementData;
+    // 创建两个指针，r读指针，w写指针
+    int r = 0, w = 0;
+    boolean modified = false;
+    try {
+        // 遍历数组中的元素
+        for (; r < size; r++)
+            // 如果complement为true，且给定的集合中包含该元素，则将该元素移动到数组头部，依次追加
+            // 如果complement为false，且给定的集合中不包含该元素，则将该元素移动到数组头部，依次追加
+            // 经过此步操作，w下标后面的元素就都是需要抛弃的
+            if (c.contains(elementData[r]) == complement)
+                elementData[w++] = elementData[r];
+    } finally {
+        // 如果r!=size，说明上面遍历的时候出现了异常
+        if (r != size) {
+            // 把没有读过的元素移动到写指针后面
+            System.arraycopy(elementData, r,
+                                elementData, w,
+                                size - r);
+            w += size - r;
         }
-        return modified;
+        // 如果w==size，说明数组不需要做修改
+        if (w != size) {
+            // clear to let GC do its work
+            for (int i = w; i < size; i++)
+                elementData[i] = null;
+            modCount += size - w;
+            size = w;
+            modified = true;
+        }
     }
+    return modified;
+}
 ```
+
+## 截取
 
 ```java
 public List<E> subList(int fromIndex, int toIndex) {
+    // 检查下标是否合法
     subListRangeCheck(fromIndex, toIndex, size);
     return new SubList(this, 0, fromIndex, toIndex);
 }
+```
 
+```java
 private class SubList extends AbstractList<E> implements RandomAccess {
     private final AbstractList<E> parent;
     private final int parentOffset;
@@ -756,33 +784,111 @@ private class SubList extends AbstractList<E> implements RandomAccess {
 }
 ```
 
+注意截取的列表并不是一个 ArrayList 类型的列表，而是 SubList 类型的，SubList 是 ArrayList 的内部类。SubList 使用的数组也就是被截取的列表的数组，也就是说对 ArrayList 或 SubList 中的元素进行修改，在两者之中都会体现出来
+
 ```java
-public void forEach(Consumer<? super E> action) {
-    Objects.requireNonNull(action);
-    final int expectedModCount = modCount;
-    @SuppressWarnings("unchecked")
-    final E[] elementData = (E[]) this.elementData;
-    final int size = this.size;
-    for (int i=0; modCount == expectedModCount && i < size; i++) {
-        action.accept(elementData[i]);
-    }
-    if (modCount != expectedModCount) {
-        throw new ConcurrentModificationException();
+public class Test {
+
+    public static void main(String[] args) {
+
+        ArrayList<Integer> list = new ArrayList<>(10);
+
+        for (int i = 0; i < 10; i++) {
+            list.add(i);
+        }
+
+        System.out.println(list);
+
+        List<Integer> subList = list.subList(5, 10);
+
+        System.out.println(subList);
+
+        subList.set(1, 999);
+        list.set(7, 666);
+        subList.add(9999999);
+
+        System.out.println(list);
+        System.out.println(subList);
     }
 }
 ```
 
+> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+[5, 6, 7, 8, 9]
+[0, 1, 2, 3, 4, 5, 999, 666, 8, 9, 9999999]
+[5, 999, 666, 8, 9, 9999999]
+
+## 转数组
+
 ```java
-    public void sort(Comparator<? super E> c) {
-        final int expectedModCount = modCount;
-        Arrays.sort((E[]) elementData, 0, size, c);
-        if (modCount != expectedModCount) {
-            throw new ConcurrentModificationException();
-        }
-        modCount++;
+public Object[] toArray() {
+    return Arrays.copyOf(elementData, size);
+}
+
+@SuppressWarnings("unchecked")
+public <T> T[] toArray(T[] a) {
+    if (a.length < size)
+        // Make a new array of a's runtime type, but my contents:
+        return (T[]) Arrays.copyOf(elementData, size, a.getClass());
+    System.arraycopy(elementData, 0, a, 0, size);
+    if (a.length > size)
+        a[size] = null;
+    return a;
+}
+```
+
+## 序列化与反序列化
+
+ArrayList 中的 elementData 是被 transient 修饰的，所以 ArrayList 序列化的时候并不是直接将 elementData 进行序列化的，而是将 elementData 中的元素依次写入到流中，这样就是以实际存储的元素进行序列化，而不是根据数组的长度进行序列化，减少空间的占用
+
+```java
+private void writeObject(java.io.ObjectOutputStream s)
+    throws java.io.IOException{
+    // Write out element count, and any hidden stuff
+    int expectedModCount = modCount;
+    s.defaultWriteObject();
+
+    // Write out size as capacity for behavioural compatibility with clone()
+    s.writeInt(size);
+
+    // Write out all elements in the proper order.
+    for (int i=0; i<size; i++) {
+        s.writeObject(elementData[i]);
     }
+
+    if (modCount != expectedModCount) {
+        throw new ConcurrentModificationException();
+    }
+}
+
+private void readObject(java.io.ObjectInputStream s)
+    throws java.io.IOException, ClassNotFoundException {
+    elementData = EMPTY_ELEMENTDATA;
+
+    // Read in size, and any hidden stuff
+    s.defaultReadObject();
+
+    // Read in capacity
+    s.readInt(); // ignored
+
+    if (size > 0) {
+        // be like clone(), allocate array based upon size not capacity
+        int capacity = calculateCapacity(elementData, size);
+        SharedSecrets.getJavaOISAccess().checkArray(s, Object[].class, capacity);
+        ensureCapacityInternal(size);
+
+        Object[] a = elementData;
+        // Read in all elements in the proper order.
+        for (int i=0; i<size; i++) {
+            a[i] = s.readObject();
+        }
+    }
+}
 ```
 
 ## 参考
 
+- [RandomAccess接口](https://www.cnblogs.com/dwlovelife/p/14056554.html)
 - [Advantages of creating an ArrayList with initial capacity of 0?](https://stackoverflow.com/questions/28345520/advantages-of-creating-an-arraylist-with-initial-capacity-of-0)
+- [死磕 java集合之ArrayList源码分析](https://www.cnblogs.com/tong-yuan/p/10638855.html)
+- [什么是fail-fast](https://www.cnblogs.com/54chensongxia/p/12470446.html)
