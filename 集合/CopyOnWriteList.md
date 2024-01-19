@@ -49,7 +49,7 @@ final void setArray(Object[] a) {
 }
 ```
 
-CopyOnWriteList 中没有 size 变量，想要获取集合中元素的数量时直接返回数组的大小就可以了。因为 CopyOnWriteArrayList 每次添加或删除，都是在新数组中进行操作的，而在新数组创建时就可根据所需的容量指定数组的大小，不像 ArrayList 会有冗余的位置
+CopyOnWriteArrayList 中没有 size 变量，想要获取集合中元素的数量时直接返回数组的大小就可以了。因为 CopyOnWriteArrayList 每次添加或删除，都是在新数组中进行操作的，而在新数组创建时就可根据所需的容量指定数组的大小，不像 ArrayList 会有冗余的位置
 
 ```java
 public int size() {
