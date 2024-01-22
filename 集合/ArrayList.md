@@ -102,6 +102,7 @@ protected transient int modCount = 0;
 ArrayList 是线程不安全的，意味着当你使用迭代器遍历一个集合的时候，同时也有可能有另一个线程再往里添加数据。所以 ArrayList 使用了 fail-fast 策略，来确保使用迭代器遍历集合，如果有其他线程在做修改能够及时感知
 
 - fail-fast（快速失败）是一种错误检测机制，一旦检测到可能发生错误，就立马抛出异常，程序不继续往下执行
+- fail-safe（安全失败）是一种保护机制，即便系统发生故障，也不会立即停止执行，通过隐藏错误来继续执行
 
 在使用迭代器的时候，首先获取该集合的 modCount，存入自己的 expectedModCount 中，每次获取元素时，都判断一下自己的 expectedModCount 是否等于当前的 modCount，如果不一致则说明集合被人修改了，则抛出 ConcurrentModificationException 异常
 
@@ -892,3 +893,4 @@ private void readObject(java.io.ObjectInputStream s)
 - [Advantages of creating an ArrayList with initial capacity of 0?](https://stackoverflow.com/questions/28345520/advantages-of-creating-an-arraylist-with-initial-capacity-of-0)
 - [死磕 java集合之ArrayList源码分析](https://www.cnblogs.com/tong-yuan/p/10638855.html)
 - [什么是fail-fast](https://www.cnblogs.com/54chensongxia/p/12470446.html)
+- [一文彻底弄懂fail-fast、fail-safe机制（带你撸源码）](https://juejin.cn/post/6879291161274482695#heading-4)

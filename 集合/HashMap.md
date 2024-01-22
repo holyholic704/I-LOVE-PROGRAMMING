@@ -59,9 +59,9 @@ final float loadFactor;
 
 ### 为什么 HashMap 的容量是 2 的倍数
 
-HashMap 通过 hash 值与容量取余操作来确定 key 的索引位置。当容量为 2 的倍数时，就可将取余操作转化成更高效的位运算，提高计算效率
+HashMap 通过 hash 值与容量取余操作来确定 key 的索引位置。当容量为 2 的整数幂时，就可将取余操作转化成更高效的位运算，提高计算效率
 
-所以为了扩容后仍能使用位运算进行取余操作，HashMap 也是按照当前容量的 2 倍进行扩容的，所以扩容之后的容量也是 2 的倍数。而且扩容后的元素，要么在原位置，要么在原位置向后移动旧容量的大小
+所以为了扩容后仍能使用位运算进行取余操作，HashMap 也是按照当前容量的 2 倍进行扩容的，所以 2 的整数幂扩容之后依然是 2 的整数幂。而且扩容后的元素，要么在原位置，要么在原位置向后移动旧容量的大小
 
 ### 为什么转换红黑树的阈值为 8
 
@@ -1022,6 +1022,10 @@ e = next;
 
 当使用 get 方法获取元素时，就会发现 `A.next = B`、`B.next = A`，相互指向，出现了死循环
 
+## 线程安全
+
+
+
 ## 参考
 
 - [二进制按位与&及求余数](https://perkins4j2.github.io/posts/19120/)
@@ -1036,4 +1040,5 @@ e = next;
 - [【Java】HashMap源码分析（JDK1.8）](https://itimetraveler.github.io/2017/11/25/%E3%80%90Java%E3%80%91HashMap%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%88JDK1.8%EF%BC%89/#%E6%A0%91%E5%BD%A2%E5%8C%96%E6%96%B9%E6%B3%95treeifyBin)
 - [Java 8系列之重新认识HashMap](https://tech.meituan.com/2016/06/24/java-hashmap.html)
 - [浅入浅出 1.7和1.8的 HashMap](https://www.cnblogs.com/god23bin/p/shallow-in-java-with-hashmap.html)
-- [HashMap头插法为什么会出现死循环 产生循环链表的影响是什么](https://blog.csdn.net/littlehaes/article/details/105241194)
+- [HashMap- 1.7源码解析](https://blog.csdn.net/qq_50596778/article/details/121181752)
+- [浅谈为什么头插法会导致hashmap7扩容死循环而尾插法却不会](https://blog.csdn.net/yxh13521338301/article/details/105629318)
