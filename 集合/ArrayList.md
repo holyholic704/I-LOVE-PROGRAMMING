@@ -465,7 +465,7 @@ private static int calculateCapacity(Object[] elementData, int minCapacity) {
 private void ensureExplicitCapacity(int minCapacity) {
     modCount++;
 
-    // overflow-conscious code
+    // 当所需的容量大于已有的容量才会扩容
     if (minCapacity - elementData.length > 0)
         grow(minCapacity);
 }
@@ -473,7 +473,9 @@ private void ensureExplicitCapacity(int minCapacity) {
 private void grow(int minCapacity) {
     // overflow-conscious code
     int oldCapacity = elementData.length;
+    // oldCapacity + oldCapacity / 2，即1.5倍
     int newCapacity = oldCapacity + (oldCapacity >> 1);
+    // 如果扩容后的容量仍小于所需容量，就直接使用所需容量
     if (newCapacity - minCapacity < 0)
         newCapacity = minCapacity;
     if (newCapacity - MAX_ARRAY_SIZE > 0)
@@ -887,6 +889,106 @@ private void readObject(java.io.ObjectInputStream s)
 }
 ```
 
+## 线程安全
+
+ArrayList 不是线程安全的，只建议在单线程环境下使用，在多线程环境下建议使用 Vetcor、CopyOnWriteArrayList、SynchronizedList
+
+### ConcurrentModificationException
+
+多线程环境下，一个线程正在使用迭代器进行遍历，其他线程对集合的结构体进行了更改，例如添加或删除，就会抛出 ConcurrentModificationException 异常
+
+### 数组下标越界
+
+```java
+public boolean add(E e) {
+    ensureCapacityInternal(size + 1);
+    // 可能抛出数组下标越界异常
+    elementData[size++] = e;
+    return true;
+}
+```
+
+例如当前集合的容量为 10，并且已经添加了 9 哥元素，线程 1 与线程 2 都执行到了 `ensureCapacityInternal(size + 1);`，他们这时获取到的 size 都为 9，`size + 1 = 9 + 1 = 10`，没有超过容量，所以线程 1 与线程 2 都认为不需要扩容，假如线程 1 先执行了 `elementData[size++] = e;`，这时还没有出现问题，线程 2 再执行 `elementData[size++] = e;`，这时由于线程 1 的操作，size 已经变成了 10，此时的数组由于没有触发扩容方法，所以容量仍未 10，即最大下标为 9，所以抛出了 ArrayIndexOutOfBoundsException
+
+### 出现 null 值或添加完成后的元素数量小于期望的数量
+
+```java
+public class Test {
+
+    static int num = 10;
+    static int thread_num = 2;
+
+    static ArrayList<Integer> list = new ArrayList<>();
+
+    static class Th extends Thread {
+        @Override
+        public void run() {
+            for (int i = 0; i < num; i++) {
+                list.add(i);
+            }
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        Thread[] arr = new Thread[thread_num];
+
+        for (int i = 0; i < arr.length; i++) {
+            arr[i] = new Thread(new Th(), "线程" + (i + 1));
+        }
+
+        Thread.sleep(50);
+
+        for (Thread thread : arr) {
+            thread.start();
+        }
+
+        for (Thread thread : arr) {
+            thread.join();
+        }
+
+        System.out.println(list);
+        System.out.println(list.size());
+    }
+}
+```
+
+上面的代码执行后可能会有 3 种结果
+
+1. 正确的添加 20 个元素，没有出现异常，没有出现 null 值
+2. 添加过程中，一个线程抛出了 ArrayIndexOutOfBoundsException，原因看上面
+3. 添加过程中，没有出现异常，但出现了 null 值，或者某个元素只被添加了 1 次
+
+> [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, null, 6, 6, 7, 8, null, 9, 9]
+> 18
+
+第 3 种情况的问题也在 `elementData[size++] = e;`，该行代码其实分为两步，第一步是 `elementData[size] = e`，第二步是 `size++`
+
+假如线程 1 将 `elementData[0]` 赋为 0，size 还未自增，线程 2 这时看到的 size 依旧还是 0，所以线程 2 也将 `elementData[0]` 赋为 0，这时就有两个 `size++` 开始执行，并且该操作也不是一个原子操作，所以就会出现两种情况
+
+1. 两个线程看到的 size 都是 0，分别进行自增并赋值，所以最终的 size 为 1
+2. 一个线程的 `size++` 执行完，此时 size 为 1，另一个线程读取到自增后的值，再执行 `size++`，所以最终的 size 为 2
+
+无论哪种情况，现在都已经出现了重复赋值，出现第 1 种情况还好，后面的元素就从 `elementData[1]` 开始赋值。出现了第 2 种情况就不妙了，后面的元素从 `elementData[2]` 开始赋值，意味着 `elementData[1]` 就没人使用了，所以该位置最后就为 null
+
+出现 null 还有一种情况，是在扩容的时候
+
+```java
+private void grow(int minCapacity) {
+    // overflow-conscious code
+    int oldCapacity = elementData.length;
+    int newCapacity = oldCapacity + (oldCapacity >> 1);
+    if (newCapacity - minCapacity < 0)
+        newCapacity = minCapacity;
+    if (newCapacity - MAX_ARRAY_SIZE > 0)
+        newCapacity = hugeCapacity(minCapacity);
+    
+    // 创建新数组，并将旧数组的元素复制到新数组中，再将当前存储元素的数组指向新数组
+    elementData = Arrays.copyOf(elementData, newCapacity);
+}
+```
+
+假如线程 1 正在执行 `Arrays.copyOf(elementData, newCapacity)`，线程 2 已完成了扩容和新元素的添加，这时线程 1 继续执行，将线程 2 已完成添加操作的数组，又指向了自己创建的新数组，所以线程 2 添加的元素也就丢失，但 size 此时已经自增过了，所以线程 1 执行到 `elementData[size++] = e;` 时，就跳过了 `size - 1` 的位置，导致该位置为 null
+
 ## 参考
 
 - [RandomAccess接口](https://www.cnblogs.com/dwlovelife/p/14056554.html)
@@ -894,3 +996,4 @@ private void readObject(java.io.ObjectInputStream s)
 - [死磕 java集合之ArrayList源码分析](https://www.cnblogs.com/tong-yuan/p/10638855.html)
 - [什么是fail-fast](https://www.cnblogs.com/54chensongxia/p/12470446.html)
 - [一文彻底弄懂fail-fast、fail-safe机制（带你撸源码）](https://juejin.cn/post/6879291161274482695#heading-4)
+- [ArryList线程安全问题以及解决方案](https://blog.csdn.net/weixin_38860401/article/details/133176597)

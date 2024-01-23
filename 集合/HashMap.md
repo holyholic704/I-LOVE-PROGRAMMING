@@ -57,6 +57,8 @@ final float loadFactor;
 
 不建议修改 loadFactor，官方推荐的 0.75 就是一个很好的平衡了空间和时间复杂度的值
 
+建议指定初始化容量时，设置为 `(需要存储的元素个数 / 负载因子) + 1`
+
 ### 为什么 HashMap 的容量是 2 的倍数
 
 HashMap 通过 hash 值与容量取余操作来确定 key 的索引位置。当容量为 2 的整数幂时，就可将取余操作转化成更高效的位运算，提高计算效率
@@ -914,6 +916,8 @@ public Set<Map.Entry<K,V>> entrySet() {
 }
 ```
 
+如果只需要遍历 key，使用 keySet 即可；如果只需要遍历 value，使用 values 即可；但如果需要遍历 key 和 value 建议使用 entrySet，相比于 keySet 获取 value 还需要调用 get 方法，相当于两次循环，entrySet 只需要一次循环
+
 ## JDK1.7 与 JDK1.8 的区别
 
 - 数据结构：1.7 为数组 + 链表；1.8 为数组 + 链表 + 红黑树。提升链表过长时的查询性能
@@ -937,7 +941,7 @@ static final int hash(Object key) {
 }
 ```
 
-### 头插法
+### JDK1.7 头插法导致的死循环
 
 ```java
 // 1.7版本扩容方法
@@ -1024,7 +1028,102 @@ e = next;
 
 ## 线程安全
 
+ArrayList 不是线程安全的，只建议在单线程环境下使用，在多线程环境下建议使用 Hashtable、ConcurrentHashMap、SynchronizedMap
 
+### 死循环
+
+HashMap 在 JDK1.7 下扩容时可能会出现环形链表，导致死循环。在 JDK1.8 中已被解决
+
+### 元素丢失
+
+```java
+final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
+                boolean evict) {
+    ...
+    if ((p = tab[i = (n - 1) & hash]) == null)
+        tab[i] = newNode(hash, key, value, null);
+    else {
+    ...
+}
+```
+
+如果两个线程算出来的下标位置是同一个，并且该位置没有添加过元素，就可能会导致一个线程刚添加的元素，被另一个线程覆盖掉，这时的 size 也是不对的，虽然执行了两次添加操作，但只添加了一个元素
+
+### 扩容时获取不到元素
+
+线程 1 在执行扩容操作
+
+```java
+final Node<K,V>[] resize() {
+    
+    ...
+
+    // 线程1正在执行扩容操作，但还未执行到这，所以目前通过get方法获取元素，计算下标时用的还是旧数组的大小
+    table = newTab;
+
+    ...
+
+    return newTab;
+}
+```
+
+线程 2 执行 get 方法
+
+```java
+final Node<K,V> getNode(int hash, Object key) {
+    Node<K,V>[] tab; Node<K,V> first, e; int n; K k;
+    // 线程2仍用旧数组的大小来获取下标位置
+    if ((tab = table) != null && (n = tab.length) > 0 &&
+        (first = tab[(n - 1) & hash]) != null) {
+        ...
+        // 假如发现该位置是个红黑树或链表，准备遍历红黑树或链表，这时已经不需要再使用数组了
+        if ((e = first.next) != null) {
+            if (first instanceof TreeNode)
+                return ((TreeNode<K,V>)first).getTreeNode(hash, key);
+            do {
+                if (e.hash == hash &&
+                    ((k = e.key) == key || (key != null && key.equals(k))))
+                    return e;
+            } while ((e = e.next) != null);
+        }
+    }
+    return null;
+}
+```
+
+线程 1 在执行扩容操作
+
+```java
+final Node<K,V>[] resize() {
+    
+    ...
+
+    // 线程1继续往后执行
+    table = newTab;
+    if (oldTab != null) {
+        // 将旧数组内的元素移到新数组中
+        for (int j = 0; j < oldCap; ++j) {
+            Node<K,V> e;
+            if ((e = oldTab[j]) != null) {
+                oldTab[j] = null;
+                // 如果该节点没有发生过冲突，就重新计算下标值，并插入进去
+                if (e.next == null)
+                    newTab[e.hash & (newCap - 1)] = e;
+                // 红黑树的分割操作
+                else if (e instanceof TreeNode)
+                    ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
+                // 链表的分割操作
+                else {
+                    ...
+                }
+            }
+        }
+    }
+    return newTab;
+}
+```
+
+如果线程 2 现在正在遍历红黑树或链表，这时线程 1 执行了分割操作，如果很不巧的，线程 2 想查找的元素，正好在另一个红黑树或链表中，就会导致返回 null，虽然这个元素之前确实存在在该位置
 
 ## 参考
 
@@ -1042,3 +1141,4 @@ e = next;
 - [浅入浅出 1.7和1.8的 HashMap](https://www.cnblogs.com/god23bin/p/shallow-in-java-with-hashmap.html)
 - [HashMap- 1.7源码解析](https://blog.csdn.net/qq_50596778/article/details/121181752)
 - [浅谈为什么头插法会导致hashmap7扩容死循环而尾插法却不会](https://blog.csdn.net/yxh13521338301/article/details/105629318)
+- [HashMap 的 7 种遍历方式与性能分析！「修正篇」](https://mp.weixin.qq.com/s/zQBN3UvJDhRTKP6SzcZFKw)
