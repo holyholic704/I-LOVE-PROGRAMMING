@@ -1,11 +1,14 @@
 - JVM
 - 并发
 - 集合
+- MySQL
 - Spring Cloud
   - 组件使用及原理
 - 消息队列
 - Spring Boot/Spring
   - 原理
+- 设计模式
+  - 常见的
 - 负载均衡
   - 了解负载均衡算法
 - Maven
@@ -18,8 +21,6 @@
   - 权限
   - JWT
   - 使用及原理
-- 设计模式
-  - 常见的
 - Java IO
   - 大致
 - Netty
@@ -30,7 +31,6 @@
 - Tomcat
   - 了解
   - 大致
-- MySQL
 - 计算机网络
 - 操作系统
 - 数据结构与算法

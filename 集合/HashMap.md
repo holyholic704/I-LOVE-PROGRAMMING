@@ -1058,7 +1058,7 @@ final Node<K,V>[] resize() {
     
     ...
 
-    // 线程1正在执行扩容操作，但还未执行到这，所以目前通过get方法获取元素，计算下标时用的还是旧数组的大小
+    // 线程1正在执行扩容操作，但还未执行到这，所以目前通过get方法获取元素，使用的还是旧数组，计算下标时用的还是旧数组的大小
     table = newTab;
 
     ...
@@ -1076,7 +1076,7 @@ final Node<K,V> getNode(int hash, Object key) {
     if ((tab = table) != null && (n = tab.length) > 0 &&
         (first = tab[(n - 1) & hash]) != null) {
         ...
-        // 假如发现该位置是个红黑树或链表，准备遍历红黑树或链表，这时已经不需要再使用数组了
+        // 假如发现该位置是个红黑树或链表，准备遍历红黑树或链表，这时已经不需要再使用数组了，所以线程1将当前的数组指向新数组也没关系
         if ((e = first.next) != null) {
             if (first instanceof TreeNode)
                 return ((TreeNode<K,V>)first).getTreeNode(hash, key);
@@ -1091,7 +1091,7 @@ final Node<K,V> getNode(int hash, Object key) {
 }
 ```
 
-线程 1 在执行扩容操作
+线程 1 继续执行扩容操作
 
 ```java
 final Node<K,V>[] resize() {
@@ -1106,12 +1106,10 @@ final Node<K,V>[] resize() {
             Node<K,V> e;
             if ((e = oldTab[j]) != null) {
                 oldTab[j] = null;
-                // 如果该节点没有发生过冲突，就重新计算下标值，并插入进去
-                if (e.next == null)
-                    newTab[e.hash & (newCap - 1)] = e;
+                ...
                 // 红黑树的分割操作
                 else if (e instanceof TreeNode)
-                    ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
+                ...
                 // 链表的分割操作
                 else {
                     ...
@@ -1123,7 +1121,7 @@ final Node<K,V>[] resize() {
 }
 ```
 
-如果线程 2 现在正在遍历红黑树或链表，这时线程 1 执行了分割操作，如果很不巧的，线程 2 想查找的元素，正好在另一个红黑树或链表中，就会导致返回 null，虽然这个元素之前确实存在在该位置
+如果线程 2 现在正在遍历红黑树或链表，这时线程 1 可能正在执行分割操作，也可能已经执行完分割操作。不管怎样，线程 2 当前遍历的红黑树或链表中，节点中维护的指针都可能产生了变化，如果很不巧的，线程 2 想查找的元素，正好在另一个红黑树或链表中，就会导致返回 null，虽然这个元素之前确实存在在该位置
 
 ## 参考
 
