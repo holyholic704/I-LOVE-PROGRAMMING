@@ -54,3 +54,7 @@ Redis 4.0 之后，可以使用 `memory usage <key>` 查询占用的内存大小
 #### 异步删除
 
 Redis 4.0 之后可以使用异步删除法，用 unlink 命令代替 del 来删除，Redis 会将 key 放入到一个异步线程中进行删除，这样就不会阻塞主线程了
+
+## 参考
+
+- [面试官：Redis 大 key 要如何处理？](https://mp.weixin.qq.com/s?__biz=MzUxODAzNDg4NQ==&mid=2247518433&idx=2&sn=e78f630c07f4e60fb78999eb3d742e9e&chksm=f98dcc4bcefa455d8ffde9ad6c8da9b3371a401766a55cbee7af11c87be070d823c8d5926aef&scene=178&cur_album_id=1790401816640225283)
