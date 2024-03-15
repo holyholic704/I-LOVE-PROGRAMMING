@@ -180,7 +180,7 @@ Spring AOP 是基于动态代理实现的，如果要代理的对象，实现了
 
 ```java
 @Service
-public class Test {
+public class TestService {
 
     @Transactional
     public void a() {
@@ -194,55 +194,43 @@ public class Test {
 
 Spring AOP 是使用动态代理来实现的，他在操作的其实是代理对象，并不是本身的对象。而自调用是使用本身的对象进行调用的，没有使用到代理对象，自然也就无法进行 AOP 操作
 
+- 直接调用方法 a
+
+![](./md.assets/a.png)
+
+可以看出是通过代理对象调用的方法 a
+
+- 通过同类的方法 b 去调用方法 a
+
+![](./md.assets/b.png)
+
+可以看出也是通过代理对象调用的方法 b，但方法 b 调用方法 a 并不是通过代理对象调用的
+
+#### 如何解决
+
+最好的办法就是将两个方法拆分成两个类，或是合并为一个方法，当然也可以通过 AopContext 获取当前上下文的代理对象
+
+需引入 aspectj 包，并在启动类上加入 `@EnableAspectJAutoProxy(exposeProxy = true)` 注解
+
 ```java
-public class SendService {
-    public void send() {
-        System.out.println("发送了哦！");
+@Service
+public class TestService {
+
+    @Transactional
+    public void a() {
+    }
+
+    public void b() {
+        ((TestService) AopContext.currentProxy()).a();
     }
 }
 ```
 
-```java
-public class CglibInterceptor implements MethodInterceptor {
+- 通过同类的方法 b 去调用方法 a
 
-    @Override
-    public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
-        System.out.println("before");
-        methodProxy.invokeSuper(o, objects);
-        System.out.println("after");
-        return null;
-    }
-}
-```
+![](./md.assets/c.png)
 
-```java
-public class Test {
-    public static void main(String[] args) {
-        CglibInterceptor cglibInterceptor = new CglibInterceptor();
-
-        SendService sendService = new SendService();
-
-        Enhancer enhancer = new Enhancer();
-        enhancer.setSuperclass(SendService.class);
-        enhancer.setCallback(cglibInterceptor);
-
-        // 使用代理对象
-        SendService proxy = (SendService) enhancer.create();
-        proxy.send();
-
-        System.out.println("##################");
-
-        // 使用本身对象
-        sendService.send();
-    }
-}
-```
-
-> before
-> 发送了哦！
-> after
-> ##################
-> 发送了哦！
+方法 b 调用方法 a 也变成了通过代理对象调用了
 
 ### 使用
 
