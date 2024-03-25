@@ -195,7 +195,7 @@ MySQL 遇到过死锁问题吗，你是如何解决的？
 
 ## 参考
 
-- [VIP MySQL 是怎样运行的：从根儿上理解 MySQL](https://juejin.cn/book/6844733769996304392)
+- [MySQL 是怎样运行的：从根儿上理解 MySQL](https://juejin.cn/book/6844733769996304392)
 - [mysql中varchar能存多少汉字、数字，以及varchar(100)和varchar(10)的区别](https://blog.csdn.net/weixin_43431218/article/details/124734940)
 - [mysql中的int(10)int(20)分别代表什么意思](https://blog.csdn.net/weixin_45707610/article/details/131439336)
 - [SQL 查询语句的执行顺序解析](https://learnku.com/articles/35655)
