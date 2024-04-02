@@ -1,7 +1,3 @@
-- JVM
-- 并发
-- 集合
-- MySQL
 - Spring Cloud
   - 组件使用及原理
 - 消息队列
@@ -17,10 +13,6 @@
   - 大致
 - Docker
   - 大致
-- Spring Security
-  - 权限
-  - JWT
-  - 使用及原理
 - Java IO
   - 大致
 - Netty
@@ -40,3 +32,12 @@
 - Shell
 - C 语言
 - 爬虫
+
+- JVM
+- 并发
+- 集合
+- MySQL
+- Spring Security
+  - 权限
+  - JWT
+  - 使用及原理
