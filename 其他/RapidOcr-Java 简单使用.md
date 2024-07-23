@@ -70,5 +70,3 @@ private static String getResourcePath(String path) {
 ## 总结
 
 后续使用时可能需要再调整调整配置，但 demo 已足够能满足基本的需求，后续如遇到问题会再次更新
-
-一个简单好用的试用，有益于产品的传播
