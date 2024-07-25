@@ -2,7 +2,7 @@
 
 Nginx 是一个 轻量级、高性能的反向代理 Web 服务器、反向代理服务器及电子邮件（IMAP/POP3/SMTP）代理服务器
 
-### 优点
+## 优点
 
 - 跨平台、配置简单、扩展性强
   
@@ -32,7 +32,7 @@ Nginx 是一个 轻量级、高性能的反向代理 Web 服务器、反向代�
 
 - 内置的健康检查功能：如果有一个服务器宕机，会做一个健康检查，再发送的请求就不会发送到宕机的服务器了，重新将请求提交到其他的节点上
 
-### 反向代理
+## 反向代理
 
 - 正向代理（forward proxy）：客户端把请求发给代理服务器，代理服务器把请求转发给外部服务器，外部服务器处理完成后通过代理服务器将结果返回给客户端
   
@@ -53,22 +53,22 @@ Nginx 是一个 轻量级、高性能的反向代理 Web 服务器、反向代�
   - 负载均衡
   
   - 提高访问速度
-    
+
     - 对于静态内容及短时间内有大量访问请求的动态内容提供缓存服务
-    
+
     - 对一些内容进行压缩，以节约带宽或为网络带宽不佳的网络提供服务
   
   - 提供安全保障
-    
+
     - 作为应用层防火墙，为网站提供对基于Web的攻击行为（例如DoS/DDoS）的防护，更容易排查恶意软体等
-    
+
     - 为后端服务器统一提供加密和 SSL 加速（如SSL终端代理）
-    
+
     - 提供HTTP访问认证
 
 ![](md.assets/42b6dc73733f208cff8d68bfe19088db.jpg)
 
-#### 正向代理与反向代理的区别
+### 正向代理与反向代理的区别
 
 1. 正向代理是客户端的代理，反向代理是服务器的代理
 
@@ -78,51 +78,7 @@ Nginx 是一个 轻量级、高性能的反向代理 Web 服务器、反向代�
 
 4. 正向代理主要为了解决访问限制，反向代理主要为了负载均衡和安全防护
 
-# 安装使用
-
-```shell
-# 下载
-
-
-wget http://nginx.org/download/nginx-1.18.0.tar.gz
-
-# 解压
-tar -zxvf nginx-1.18.0.tar.gz
-
-# 执行编译前的环境配置（默认安装路径为：/usr/local/nginx）
-./configure
-# 编译及安装
-make && make install
-
-# 依赖（如果需要）
-#   gcc编译工具
-#   pcre库
-#   zlib库
-#   openssl库
-yum install -y gcc pcre pcre-devel zlib zlib-devel openssl openssl-devel
-
-# 启动，进入/usr/local/nginx/sbin
-./nginx
-```
-
-- 执行成功后，默认会产生两个服务进程，一个 master 进程，一个 worker 进程
-
-- 默认端口号为 80
-
-### 卸载
-
-```shell
-# 关闭进程
-./nginx -s stop
-
-# 删除文件夹
-rm -rf /usr/local/nginx
-
-# 清除编译环境，进入到源代码解压后的目录
-make clean
-```
-
-### 常用命令
+## 常用命令
 
 ```shell
 # 启动
@@ -144,7 +100,7 @@ make clean
 ./nginx -t
 ```
 
-# 配置文件
+## 配置文件
 
 ### 全局块
 
@@ -212,7 +168,7 @@ log_format  main '$remote_addr - $remote_user [$time_local] "$request" '
 # 如需关闭，可以使用 access_log off;
 access_log  logs/access.log  main;
 
-# 启高效文件传输模式
+# 启用高效文件传输模式
 sendfile  on;
 # 减少网络报文段的数量，此选项仅在使用sendfile的时候使用
 # 在一个数据包里发送所有头文件，而不一个接一个的发送
@@ -302,3 +258,5 @@ upstream  bakend {
     server  192.168.1.5:80  backup;
 }
 ```
+
+docker run -p 80:80 --name nginx -v D:/conf/nginx/nginx.conf:/etc/nginx/nginx.conf -d nginx:latest
