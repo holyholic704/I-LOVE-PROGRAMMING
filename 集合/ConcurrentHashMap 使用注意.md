@@ -1,0 +1,5 @@
+- [震惊！ConcurrentHashMap里面也有死循环，作者留下的“彩蛋”了解一下？](https://www.cnblogs.com/thisiswhy/p/13127162.html)
+- [ConcurrentHashMap#computeIfAbsent have performance problem in jdk1.8](https://github.com/apache/dubbo/issues/11294)
+- [性能有坑 | 慎用 Java 8 ConcurrentHashMap 的 computeIfAbsent](https://blog.csdn.net/wu_weijie/article/details/121899160)
+- [ConcurrentHashMap.computeIfAbsent(k,f) locks bin when k present](https://bugs.openjdk.org/browse/JDK-8161372)
+- [ConcurrentHashMap.computeIfAbsent stuck in an endless loop](https://bugs.openjdk.org/browse/JDK-8062841)
